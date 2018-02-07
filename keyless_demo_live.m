@@ -24,8 +24,8 @@ pkt_counter = 0;
 
 
 %keyless_mag = read_float_binary('data/keyless_mag.dat');
-%fi = fopen('data/keyless_mag_fifo','rb');
-fi = fopen('/tmp/keyless_mag_data.dat','rb');
+fi = fopen('/tmp/keyless_mag_fifo','rb');
+%fi= fopen('/tmp/keyless_mag_data.dat','rb');
 
 
 handFig = figure(1);

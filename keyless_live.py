@@ -1,9 +1,20 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
 ##################################################
-# Gnuradio Python Flow Graph
+# GNU Radio Python Flow Graph
 # Title: Keyless Live
-# Generated: Mon Oct 13 09:16:56 2014
+# Generated: Wed Feb  7 08:47:24 2018
 ##################################################
+
+if __name__ == '__main__':
+    import ctypes
+    import sys
+    if sys.platform.startswith('linux'):
+        try:
+            x11 = ctypes.cdll.LoadLibrary('libX11.so')
+            x11.XInitThreads()
+        except:
+            print "Warning: failed to XInitThreads()"
 
 from gnuradio import blocks
 from gnuradio import eng_notation
@@ -17,7 +28,9 @@ from gnuradio.wxgui import scopesink2
 from grc_gnuradio import wxgui as grc_wxgui
 from optparse import OptionParser
 import osmosdr
+import time
 import wx
+
 
 class keyless_live(grc_wxgui.top_block_gui):
 
@@ -87,7 +100,7 @@ class keyless_live(grc_wxgui.top_block_gui):
         self.Add(_fine_freq_sizer)
         self.wxgui_scopesink2_0 = scopesink2.scope_sink_f(
         	self.GetWin(),
-        	title="Scope Plot",
+        	title='Scope Plot',
         	sample_rate=50e3,
         	v_scale=1,
         	v_offset=0,
@@ -96,7 +109,7 @@ class keyless_live(grc_wxgui.top_block_gui):
         	xy_mode=False,
         	num_inputs=1,
         	trig_mode=wxgui.TRIG_MODE_AUTO,
-        	y_axis_label="Counts",
+        	y_axis_label='Counts',
         )
         self.Add(self.wxgui_scopesink2_0.win)
         _vol_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -122,7 +135,7 @@ class keyless_live(grc_wxgui.top_block_gui):
         	proportion=1,
         )
         self.Add(_vol_sizer)
-        self.rtlsdr_source_0 = osmosdr.source( args="numchan=" + str(1) + " " + "" )
+        self.rtlsdr_source_0 = osmosdr.source( args="numchan=" + str(1) + " " + '' )
         self.rtlsdr_source_0.set_sample_rate(samp_rate)
         self.rtlsdr_source_0.set_center_freq(315e6+fine_freq, 0)
         self.rtlsdr_source_0.set_freq_corr(0, 0)
@@ -132,12 +145,12 @@ class keyless_live(grc_wxgui.top_block_gui):
         self.rtlsdr_source_0.set_gain(gain, 0)
         self.rtlsdr_source_0.set_if_gain(60, 0)
         self.rtlsdr_source_0.set_bb_gain(60, 0)
-        self.rtlsdr_source_0.set_antenna("", 0)
+        self.rtlsdr_source_0.set_antenna('', 0)
         self.rtlsdr_source_0.set_bandwidth(0, 0)
-          
+
         self.low_pass_filter_0 = filter.fir_filter_ccf(40, firdes.low_pass(
         	1, samp_rate, cutoff, 2*cutoff, firdes.WIN_HAMMING, 6.76))
-        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*1, "/home/triskelion/Documents/Demo/Keyless/data/keyless_mag_fifo", False)
+        self.blocks_file_sink_0 = blocks.file_sink(gr.sizeof_float*1, '/tmp/keyless_mag_fifo', False)
         self.blocks_file_sink_0.set_unbuffered(True)
         self.blocks_complex_to_mag_0 = blocks.complex_to_mag(1)
         _alpha_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -167,12 +180,10 @@ class keyless_live(grc_wxgui.top_block_gui):
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.blocks_complex_to_mag_0, 0), (self.wxgui_scopesink2_0, 0))
-        self.connect((self.rtlsdr_source_0, 0), (self.low_pass_filter_0, 0))
-        self.connect((self.low_pass_filter_0, 0), (self.blocks_complex_to_mag_0, 0))
         self.connect((self.blocks_complex_to_mag_0, 0), (self.blocks_file_sink_0, 0))
-
-
+        self.connect((self.blocks_complex_to_mag_0, 0), (self.wxgui_scopesink2_0, 0))
+        self.connect((self.low_pass_filter_0, 0), (self.blocks_complex_to_mag_0, 0))
+        self.connect((self.rtlsdr_source_0, 0), (self.low_pass_filter_0, 0))
 
     def get_vol(self):
         return self.vol
@@ -223,17 +234,13 @@ class keyless_live(grc_wxgui.top_block_gui):
         self._alpha_slider.set_value(self.alpha)
         self._alpha_text_box.set_value(self.alpha)
 
-if __name__ == '__main__':
-    import ctypes
-    import sys
-    if sys.platform.startswith('linux'):
-        try:
-            x11 = ctypes.cdll.LoadLibrary('libX11.so')
-            x11.XInitThreads()
-        except:
-            print "Warning: failed to XInitThreads()"
-    parser = OptionParser(option_class=eng_option, usage="%prog: [options]")
-    (options, args) = parser.parse_args()
-    tb = keyless_live()
+
+def main(top_block_cls=keyless_live, options=None):
+
+    tb = top_block_cls()
     tb.Start(True)
     tb.Wait()
+
+
+if __name__ == '__main__':
+    main()

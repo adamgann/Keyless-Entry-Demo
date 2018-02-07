@@ -2,14 +2,18 @@ A simple receiver for keyless entry remotes demonstrating the use of MATLAB + GN
 Tested with a key that transmits OOK at 315MHz, yours may use a different frequency or packet format.
 
 ### Dependencies
-* GNU Radio 3.7.10 or later
+* GNU Radio 3.7.10 or later (may work with older minor releases, but not tested)
 * Modern-ish version of Matlab. No toolboxes should be required. 
 * gr-osmosdr, if you use the build-gnuradio script, this will be installed by default
 
 ### Running
 From the terminal "sudo sh run_keyless_demo.sh"
+
 From MATLAB run keyless_demo_live.m
+
 When done, kill the MATLAB script first, then the terminal process.
+
+The script test_rtlsdr.sh can be used as a quick test if the RTL-SDR is initialized properly
 
 
 

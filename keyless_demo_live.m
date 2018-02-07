@@ -24,8 +24,8 @@ pkt_counter = 0;
 
 
 %keyless_mag = read_float_binary('data/keyless_mag.dat');
-fi = fopen('data/keyless_mag_fifo','rb');
-
+%fi = fopen('data/keyless_mag_fifo','rb');
+fi = fopen('/tmp/keyless_mag_data.dat','rb');
 
 
 handFig = figure(1);
@@ -60,7 +60,12 @@ end
 
 drawnow
   
-eng_mat = vec2mat(raw,10);
+% Format matrix into a matrix with 10 columns.
+nbuf = ceil(length(raw)/10)*10 - length(raw);
+raw_buf = [raw; zeros(nbuf,1)];
+eng_mat = reshape(raw_buf,[],10);
+
+
 x_mag = abs(eng_mat).^2;
 x_sum = sum(x_mag,2);
 
@@ -141,10 +146,18 @@ for ii=2:length(x_dec)-1
     end
 end
 
-%bit = bit(1:2:end);
-bit_group = vec2mat(bit,8);
-byte = bi2de(bit_group)';
+npad = ceil(length(bit)/8)*8 - length(bit);
+bit_pad = [bit zeros(1,npad)];
+bit_group = reshape(bit_pad,8,[]).';
+%bit_group = vec2mat(bit,8);
 
+
+
+
+bit_str = num2str(fliplr(bit_group));
+byte = bin2dec(bit_str).';
+
+%byte = bi2de(bit_group)';
 
 %% Decode The Packet
 known_sync = 85*ones(1,13);

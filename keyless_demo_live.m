@@ -1,8 +1,14 @@
+% keyless_demo_live.m
 %
+% Demonstration of receiving and decoding bytes from a keyless entry
+% remote. Data is transmitted using on-off keying. This file reads from a 
+% FIFO continuously and recovers bytes. 
 %
-%
+% Adam Gannon, adamgannon.com, 2018.
 
-vaporize
+clear variables;
+close all
+clc
 
 
 %% Parameters

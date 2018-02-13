@@ -134,7 +134,7 @@ pktCut = rawBuf(startInd:startInd+pkt_len);
 rawBuf = rawBuf(startInd+pkt_len+1:end);
 
 
-%% Filter The Signal
+%% Recover bits 
 
 % Apply a moving-average filter to the individual peaks. 
 nFilt=4;
@@ -156,12 +156,10 @@ pktDec = pktDec(start_ind:end);
 
 
 
+%% Convert recovered bits into bytes
 
-
-
-%% Decode The Bits
 counter =0;
-bit_ind = 1;
+iBit = 1;
 for ii=2:length(pktDec)-1
     if (pktDec(ii)~=pktDec(ii-1)) % Transition
         counter = 0;
@@ -169,48 +167,52 @@ for ii=2:length(pktDec)-1
         counter=counter+1;
         if (counter>16)
             counter=0;
-            bit(bit_ind) = pktDec(ii);
-            bit_ind=bit_ind+1;
+            bit(iBit) = pktDec(ii);
+            iBit=iBit+1;
         end
     end
 end
 
-npad = ceil(length(bit)/8)*8 - length(bit);
-bit_pad = [bit zeros(1,npad)];
-bit_group = reshape(bit_pad,8,[]).';
-%bit_group = vec2mat(bit,8);
+nPad = ceil(length(bit)/8)*8 - length(bit);
+bitPad = [bit zeros(1,nPad)];
+bitGroup = reshape(bitPad,8,[]).';
 
 
-
-
-bit_str = num2str(fliplr(bit_group));
-byte = bin2dec(bit_str).';
-
-%byte = bi2de(bit_group)';
+bitStr = num2str(fliplr(bitGroup));
+byteVec = bin2dec(bitStr).';
 
 %% Decode The Packet
-known_sync = 85*ones(1,13);
-if (length(byte)<14)
+
+% We know the packet starts with 13 repititions of 85 as a sync sequence.
+% Discard this packet if we don't find that.
+knownSync = 85*ones(1,13);
+if (length(byteVec)<14)
     continue
 end
-sync = byte(1:13);
-payload = byte(14:end);
+sync = byteVec(1:13);
+payload = byteVec(14:end);
 
-pkt_good = false;
-if (isequal(sync,known_sync))
+pktGood = false;
+if (isequal(sync,knownSync))
     display('Received Pkt')
-    pkt_good=true;
+    pktGood=true;
 end
 
 
+%% Draw Results
 
-if (pkt_good)
-    disp_counter = 4
-    goodHand = text(0,0.5,good_str,'fontsize',16,'color','r');
+if (pktGood)
+    dt = datetime('now')
+    timeStr = datestr(dt,'HH:MM:SS.FFF')
+    successStr = strcat('Transmission Received: ',timeStr)
+    if exist('goodHand')
+        delete(goodHand)
+    end
+    goodHand = text(0,0.5,successStr,'fontsize',16,'color','r');
 end 
 drawnow
 
-if (~pkt_good)
+if (~pktGood)
    continue
 end
 
@@ -220,10 +222,10 @@ pkt_counter=pkt_counter+1;
 rx_payload(pkt_counter,1:length(payload)) = payload;
    
 
-%% Plot the results
+
 text_str = [];
-for ii=1:length(byte)
-    text_str = strcat(text_str, sprintf(' %d  ',byte(ii)));
+for ii=1:length(byteVec)
+    text_str = strcat(text_str, sprintf(' %d  ',byteVec(ii)));
 end
 
 preamble_str = [];

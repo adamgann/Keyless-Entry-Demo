@@ -14,7 +14,7 @@ clc
 %% Parameters
 
 threshold = 0.2;
-pkt_len = 6000;
+pkt_len = 7000;
 pulse_len = 22;
 window_len = 10;
 
@@ -24,8 +24,8 @@ buffer_len = 80000;
 rx_pkts = zeros(35,35);
 pkt_counter = 0;
 
-runLive = true;
-debugMode = false;
+runLive = false;
+debugMode = true;
 
 
 %% Data
@@ -113,25 +113,9 @@ if (startInd+pkt_len)>length(rawBuf)
 end
 
 
-% Plot the start of the packet
-if (debugMode)
-    
-    startVec = zeros(size(rawBuf));
-    startVec(startInd) = 1;
-    
-    figure; 
-    plot(rawBuf);
-    hold on;
-    plot(startVec,'r')
-    
-    pause
-    close
-end
-
-
 % Cut the packet starting with the detected peak
 pktCut = rawBuf(startInd:startInd+pkt_len);
-rawBuf = rawBuf(startInd+pkt_len+1:end);
+%rawBuf = rawBuf(startInd+pkt_len+1:end);
 
 
 %% Recover bits 
@@ -246,6 +230,66 @@ text(0.25,0,' |--------------------------------------------Button Code ---------
 
 drawnow
 tic
+
+%% Plot intermediate steps 
+
+% Don't do this if we're not debugging
+if (~debugMode)
+    continue
+end
+
+% 
+figure; 
+plot(rawBuf);
+title('Raw Packet')
+pause
+
+figure;
+plot(shortAvg)
+title('Packet Averaged')
+pause
+
+%
+threshVec = threshold.*ones(size(rawNorm));
+figure
+plot(rawNorm)
+hold on;
+plot(threshVec,'r')
+title('Start of Packet Peaks')
+pause
+
+
+% Plot packet start
+startVec = zeros(size(rawBuf));
+startVec(startInd) = 1;
+
+figure; 
+plot(rawBuf);
+hold on;
+plot(startVec,'r')
+title('Raw Packet with Start Index')
+pause
+
+
+% Plot cut packet
+figure;
+plot(pktCut);
+title('Raw Packet, Cut')
+pause
+
+% Plot bits
+figure;
+plot(pktDec);
+ylim([-0.1 1.1])
+title('Recovered Bits')
+
+bitStr 
+pause
+
+byteVec
+pause
+
+dec2hex(payload)
 
 
 end

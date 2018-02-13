@@ -18,20 +18,23 @@ pkt_len = 6000;
 pulse_len = 22;
 window_len = 10;
 
-buffer_len = 50000;
-
+%buffer_len = 50000;
+buffer_len = 80000;
 
 rx_pkts = zeros(35,35);
 pkt_counter = 0;
 
+runLive = true;
+debugMode = false;
 
 
 %% Data
 
-
-%keyless_mag = read_float_binary('data/keyless_mag.dat');
-fi = fopen('/tmp/keyless_mag_fifo','rb');
-%fi= fopen('/tmp/keyless_mag_data.dat','rb');
+if (runLive)
+    fi = fopen('/tmp/keyless_mag_fifo','rb');
+else
+    fi= fopen('/tmp/keyless_mag_data.dat','rb');
+end
 
 
 handFig = figure(1);
@@ -50,7 +53,7 @@ tic
 %% Energy Detection
 
 in_buff = fread(fi, buffer_len, 'float');
-raw = in_buff;
+rawBuf = in_buff;
 
 while(1)
 
@@ -65,71 +68,91 @@ if (s>3)
 end
 
 drawnow
-  
-% Format matrix into a matrix with 10 columns.
-nbuf = ceil(length(raw)/10)*10 - length(raw);
-raw_buf = [raw; zeros(nbuf,1)];
-eng_mat = reshape(raw_buf,[],10);
+
+%% Packet Detection
+
+% Apply a moving average filter to create a plateau 
+nSignalAvg = 100;
+signalAvgTaps = ones(nSignalAvg,1)./nSignalAvg;
+shortAvg = abs(filter(signalAvgTaps,1,rawBuf));
 
 
-x_mag = abs(eng_mat).^2;
-x_sum = sum(x_mag,2);
+% Apply a longer moving average filter
+nEnergyAvg = 1000;
+energyAvgTaps = ones(nEnergyAvg,1)./nEnergyAvg;
+longAvg = abs(filter(energyAvgTaps,1,rawBuf));
 
-b = x_sum(2:end);
-a = x_sum(1:end-1);
-
-x_diff = b./a;
-x_norm = x_diff./max(x_diff);
+% Take the difference to show when energy rises sharply
+rawNorm = shortAvg./(longAvg);
+rawNorm = rawNorm(nEnergyAvg:end)./10;
 
 
-
-x_ind = find(x_norm>threshold);
-if (isempty(x_ind))
-    x_ind = 1;
+% Find indices when energy rises sharply
+% If no plateau is found, read more samples from the buffer.
+indAboveThresh = find(rawNorm > threshold);
+if isempty(indAboveThresh)
+    rawBuf = fread(fi, buffer_len, 'float');
+    continue;
 end
 
-start_ind = x_ind(1)*window_len;
+% Because of the filtering, the actual start of the packet will be nEnergy
+% samples after the detected peak. This is okay.
+startInd = indAboveThresh(1);
 
 
-if (start_ind+pkt_len)>length(raw)
+
+% If the packet is partially cut off by the buffer boundaries, read in more
+% samples from the buffer and append them to the packet
+if (startInd+pkt_len)>length(rawBuf)
     in_buff = fread(fi, buffer_len, 'float');
     if (isempty(in_buff))
         %display('Buffer Empty')
         continue
     end
-    raw = cat(1,raw,in_buff);
+    rawBuf = cat(1,rawBuf,in_buff);
 end
 
 
+% Plot the start of the packet
+if (debugMode)
+    
+    startVec = zeros(size(rawBuf));
+    startVec(startInd) = 1;
+    
+    figure; 
+    plot(rawBuf);
+    hold on;
+    plot(startVec,'r')
+    
+    pause
+    close
+end
 
-vec = zeros(size(raw));
-vec(start_ind) = 1;
 
-x_pkt = raw(start_ind:start_ind+pkt_len);
-raw = raw(start_ind+pkt_len+1:end);
+% Cut the packet starting with the detected peak
+pktCut = rawBuf(startInd:startInd+pkt_len);
+rawBuf = rawBuf(startInd+pkt_len+1:end);
 
 
 %% Filter The Signal
 
-n=2;
-x_filt = filter(ones(1,n)/n,1,x_pkt);
+% Apply a moving-average filter to the individual peaks. 
+nFilt=4;
+pktFilt = filter(ones(1,nFilt)/nFilt,1,pktCut);
 
+% Sign limit the packet. 
+decodeThresh = 0.5;
+pktDec = pktFilt;
+pktDec(pktDec>decodeThresh) = 1;
+pktDec(pktDec~=1) = 0;
 
-x_dec = x_filt;
-x_dec(x_dec>0.3) = 1;
-x_dec(x_dec~=1) = 0;
-
-
-
-x_ind = find(x_dec);
-
-if (isempty(x_ind))
+% The packet will start with a (1), so cut any silence beforehand.
+indAboveThresh = find(pktDec);
+if (isempty(indAboveThresh))
     continue;
 end
-
-start_ind = x_ind(1);
-
-x_dec = x_dec(start_ind:end);
+start_ind = indAboveThresh(1);
+pktDec = pktDec(start_ind:end);
 
 
 
@@ -139,14 +162,14 @@ x_dec = x_dec(start_ind:end);
 %% Decode The Bits
 counter =0;
 bit_ind = 1;
-for ii=2:length(x_dec)-1
-    if (x_dec(ii)~=x_dec(ii-1)) % Transition
+for ii=2:length(pktDec)-1
+    if (pktDec(ii)~=pktDec(ii-1)) % Transition
         counter = 0;
     else
         counter=counter+1;
         if (counter>16)
             counter=0;
-            bit(bit_ind) = x_dec(ii);
+            bit(bit_ind) = pktDec(ii);
             bit_ind=bit_ind+1;
         end
     end
